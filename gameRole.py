@@ -109,3 +109,23 @@ class Button:
         in_button_x = self.pos[0] - w / 2 < x < self.pos[0] + w / 2
         in_button_y = self.pos[1] - h / 2 < y < self.pos[1] + h / 2
         return in_button_x and in_button_y
+
+
+class RankList:
+    def __init__(self, rank, player_name, score, pos, font_size):
+        self.pos = pos
+        rank_font = pygame.font.Font(None, font_size)
+        self.render_rank = rank_font.render(str(rank), True, (128, 128, 128))
+        self.render_score = rank_font.render(str(score), True, (128, 128, 128))
+        self.render_player_name = rank_font.render(str(player_name), True, (128, 128, 128))
+        self.rect_rank = self.render_rank.get_rect()
+        self.rect_player_name = self.render_player_name.get_rect()
+        self.rect_score = self.render_score.get_rect()
+        self.rect_rank.center = (pos[0] - 144, pos[1])
+        self.rect_player_name.center = pos
+        self.rect_score.center = (pos[0] + 144, pos[1])
+
+    def render(self, screen):
+        screen.blit(self.render_rank, self.rect_rank)
+        screen.blit(self.render_player_name, self.rect_player_name)
+        screen.blit(self.render_score, self.rect_score)
