@@ -10,16 +10,46 @@ from sys import exit
 from pygame.locals import *
 from gameRole import *
 import random
+import string
+from inputbox import display_box, get_key
 from setting import *
+from dBHelper import DBHelper
 
 
 def init():
+    # 初始化游戏
     pygame.init()
+    # 设置游戏界面大小，背景和标题
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    # 载入背景图
+    pygame.display.set_caption('飞机大战')
+
     background = pygame.image.load('resources/image/background.png').convert()
     screen.fill(0)
     screen.blit(background, (0, 0))
+
+    current_string = []
+    display_box(screen, 'NAME' + ": " + string.join(current_string, ""), background)
+
+    while 1:
+        inkey = get_key()
+        if inkey == K_BACKSPACE:
+            current_string = current_string[0:-1]
+        elif inkey == K_RETURN:
+            break
+        elif inkey == K_MINUS:
+            current_string.append("_")
+        elif inkey <= 127:
+            current_string.append(chr(inkey))
+        elif inkey == 'exit':
+            pygame.quit()
+            exit()
+        display_box(screen, 'NAME' + ": " + string.join(current_string, ""), background)
+
+    player_name = string.join(current_string, "")
+
+    screen.fill(0)
+    screen.blit(background, (0, 0))
+
     easy_level_btn = Button("EASY", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), 36)
     medium_level_btn = Button("MEDIUM", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 36), 36)
     hard_level_btn = Button("HARD", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 72), 36)
@@ -46,16 +76,10 @@ def init():
                     is_waiting = False
         pygame.display.update()
 
-    return game_level
+    return game_level, player_name, screen
 
 
-def run(level):
-    # 初始化游戏
-    pygame.init()
-    # 设置游戏界面大小，背景和标题
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption('飞机大战')
-
+def run(level, player_name, screen, db_helper):
     # 载入游戏音乐
     bullet_sound = pygame.mixer.Sound('resources/sound/bullet.wav')
     enemy1_down_sound = pygame.mixer.Sound('resources/sound/enemy1_down.wav')
@@ -67,7 +91,7 @@ def run(level):
     # 载入背景图
     background = pygame.image.load('resources/image/background.png').convert()
     # 游戏结束背景图
-    game_over = pygame.image.load('resources/image/gameover.png')
+    game_over = pygame.image.load('resources/image/gameover_new.png')
 
     # 飞机，子弹素材图片
     filename = 'resources/image/shoot.png'
@@ -192,7 +216,7 @@ def run(level):
                 enemy1_down_sound.play()
             if enemy_down.down_index > 7:
                 enemies_down.remove(enemy_down)
-                score += 1000
+                score += level.SCORE_PER_HIT
                 continue
             screen.blit(enemy_down.down_imgs[enemy_down.down_index // 2], enemy_down.rect)
             enemy_down.down_index += 1
@@ -210,7 +234,7 @@ def run(level):
         screen.blit(score_text, text_rect)
 
         user_font = pygame.font.Font(None, 36)
-        user_text = user_font.render(str("Jack"), True, (128, 128, 128))
+        user_text = user_font.render(player_name, True, (128, 128, 128))
         user_rect = user_text.get_rect()
         user_rect.topright = [SCREEN_WIDTH - 10, 10]
         screen.blit(user_text, user_rect)
@@ -237,14 +261,34 @@ def run(level):
             if key_pressed[K_d] or key_pressed[K_RIGHT]:
                 player.moveRight()
 
+    if not db_helper.is_user_exist(player_name):
+        db_helper.add_record(player_name, level.LEVEL, score)
+    else:
+        db_helper.update_record(player_name, level.LEVEL, score)
+
+    print db_helper.find_top_score()
+
     # 游戏结束后显示最终得分
     font = pygame.font.Font(None, 48)
     text = font.render('Score: ' + str(score), True, (255, 0, 0))
     text_rect = text.get_rect()
     text_rect.centerx = screen.get_rect().centerx
-    text_rect.centery = screen.get_rect().centery + 24
+    text_rect.centery = screen.get_rect().centery - 48
     screen.blit(game_over, (0, 0))
     screen.blit(text, text_rect)
+
+    # 显示排行榜
+
+    rank = 1
+    pos_x = screen.get_rect().centerx
+    pos_y = screen.get_rect().centery + 24
+    rank_title = RankList('Rank', 'Player Name', 'Score', (pos_x, pos_y), 36)
+    rank_title.render(screen)
+    for record in db_helper.find_top_score()[:3]:
+        pos_y += 54
+        rank_record = RankList(rank, record[0], record[2], (pos_x, pos_y), 36)
+        rank_record.render(screen)
+        rank += 1
 
     # 显示得分并处理游戏结束
     while 1:
@@ -256,5 +300,6 @@ def run(level):
 
 
 if __name__ == '__main__':
-    level = init()
-    run(level)
+    db_helper = DBHelper()
+    level, player_name, screen = init()
+    run(level, player_name, screen, db_helper)
