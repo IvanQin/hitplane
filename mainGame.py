@@ -6,7 +6,7 @@ Created on Wed Sep 11 11:05:00 2013
 """
 
 import pygame
-from sys import exit
+from sys import *
 from pygame.locals import *
 from gameRole import *
 import random
@@ -303,3 +303,4 @@ if __name__ == '__main__':
     db_helper = DBHelper()
     level, player_name, screen = init()
     run(level, player_name, screen, db_helper)
+    db_helper.close()
